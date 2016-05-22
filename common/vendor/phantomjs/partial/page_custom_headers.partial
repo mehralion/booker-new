@@ -1,0 +1,14 @@
+
+var headers = {{ input.getHeaders('json') }};
+
+var $ae = null;
+if(headers['Accept-Encoding'] !== undefined) {
+    $ae = headers['Accept-Encoding'];
+    delete headers['Accept-Encoding'];
+}
+
+page.customHeaders = headers ? headers : {};
+if($ae !== null) {
+    page.customHeaders["Accept-Encoding"] = $ae;
+}
+
