@@ -11,6 +11,7 @@ use frontend\assets\AppAsset;
 use yii\bootstrap\Alert;
 
 AppAsset::register($this);
+\YiiNodeSocket\Assets\NodeSocketAssets::register($this);
 $theme = $this->theme;
 ?>
 <?php $this->beginPage() ?>

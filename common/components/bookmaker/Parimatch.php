@@ -63,6 +63,7 @@ class Parimatch extends BaseBookmaker
         $response = $this->client
             ->referer($this->work_host)
             ->get(sprintf('%s/%s', rtrim($this->work_host, '/'), ltrim($this->sport_link[$sport_type], '/')));
+
         /** @var simple_html_dom $dom */
         $dom = \Sunra\PhpSimple\HtmlDomParser::str_get_html('<html>'.$response.'</html>');
         /** @var simple_html_dom_node $sport_el */
@@ -98,7 +99,7 @@ class Parimatch extends BaseBookmaker
 
         $response = $this->client
             ->referer($this->work_host)
-            ->get(sprintf('%s/%s', rtrim($this->work_host, '/'), ltrim($Sport->getLink(), '/')));
+            ->get(sprintf('%s/%s', rtrim($this->work_host, '/'), ltrim($Sport->getLink(), '/')), true);
         if(!$response) {
             return $events;
         }
@@ -113,10 +114,10 @@ class Parimatch extends BaseBookmaker
 
         $Sport->setTemplate($template_name);
         foreach ($items as $item) {
-            if(preg_match('/'.$this->regexp_ignore_event.'/ui', $item['team_1'])) {
+            if($this->regexp_ignore_event && preg_match('/'.$this->regexp_ignore_event.'/ui', $item['team_1'])) {
                 continue;
             }
-            if(preg_match('/'.$this->regexp_ignore_event.'/ui', $item['team_2'])) {
+            if($this->regexp_ignore_event && preg_match('/'.$this->regexp_ignore_event.'/ui', $item['team_2'])) {
                 continue;
             }
 
@@ -126,7 +127,7 @@ class Parimatch extends BaseBookmaker
                 ->setTeam2Alias($this->getTeamAlias($item['team_2']))
                 ->setOdds($item['ratio_list']);
 
-            if($Event->getDate() > time()) {
+            if($Event->getDate() < time()) {
                 continue;
             }
 

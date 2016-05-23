@@ -19,5 +19,19 @@ return [
         'phantom' => [
             'pathToPhantomJS' => ROOT_DIR.'/bin/phantomjs.exe'
         ],
+        'nodeSocket' => [
+            'ip' => 'b.oldbk.local',
+            'host' => 'b.oldbk.local',
+            'allowedServerAddresses' => [
+                "localhost",
+                "127.0.0.1",
+                "b.oldbk.local",
+                "::ffff:127.0.0.1"
+            ],
+            'origin' => '*:*, b.oldbk.local:*, localhost:*',
+            'sessionVarName' => 'BUKER_OLDBK',
+            'port' => 3001,
+            'socketLogFile' => ROOT_DIR.'/tmp/node-socket.log',
+        ],
     ],
 ];

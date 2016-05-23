@@ -5,7 +5,7 @@
  * Date: 23.05.2016
  */
 
-namespace common\components\factories\problem\event;
+namespace common\factories\problem\event;
 
 
 use common\factories\problem\event\_interface\iProblemEvent;

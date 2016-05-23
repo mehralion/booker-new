@@ -2,7 +2,9 @@
 
 namespace common\models;
 
+use common\models\event\Event;
 use Yii;
+use yii\behaviors\TimestampBehavior;
 
 /**
  * This is the model class for table "team_alias".
@@ -26,6 +28,17 @@ class TeamAlias extends \yii\db\ActiveRecord
     public static function tableName()
     {
         return 'team_alias';
+    }
+
+    public function behaviors()
+    {
+        return [
+            [
+                'class' => TimestampBehavior::className(),
+                'updatedAtAttribute' => 'updated_at',
+                'createdAtAttribute' => 'created_at',
+            ],
+        ];
     }
 
     /**

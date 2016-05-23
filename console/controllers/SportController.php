@@ -1,8 +1,9 @@
 <?php
 namespace console\controllers;
-use common\components\factories\problem\event\FactoryProblemEvent;
+use common\factories\problem\event\FactoryProblemEvent;
 use common\helpers\SportHelper;
 use common\models\event\Event;
+use common\models\EventBookmakerVersion;
 use common\models\EventOdds;
 use common\models\EventProblem;
 use common\models\sport\Sport;
@@ -29,6 +30,7 @@ class SportController extends Controller
         $Bookmakers = \Yii::$app->bookmaker->getList();
         foreach ($Bookmakers as $Bookmaker) {
             $SportList = $Bookmaker->getSportList($sport_type);
+            var_dump('Sport: '.count($SportList));
             $titles = [];
             foreach ($SportList as $Sport) {
                 $titles[] = $Sport->getTitle();
@@ -124,25 +126,34 @@ class SportController extends Controller
                     ->setSportType($alias['sport']['sport_type']);
 
                 $SportEvents = $Bookmaker->getEvents($Sport);
+                var_dump('Events: '.$SportEvents->count());
                 if($SportEvents->isEmpty()) {
                     continue;
                 }
 
-                foreach ($SportEvents as $Event) {
+                foreach ($SportEvents as $key => $Event) {
                     $Event->setSportId($alias['sport']['id']);
                     
                     $t = \Yii::$app->db->beginTransaction();
                     try {
+                        $new_odds = $Event->getOdds();
+
                         $model = Event::find()
                             ->andWhere('team_1_id = :team_1_id and team_2_id = :team_2_id', [
                                 ':team_1_id' => $Event->getTeam1Alias()->team_id,
                                 ':team_2_id' => $Event->getTeam2Alias()->team_id,
                             ])
                             ->andWhere(['in', 'status', [Event::STATUS_ENABLE, Event::STATUS_NEW]])
-                            ->andWhere('((started_at - :date) < 144000 and (started_at - :date) > 0) or ((started_at - :date) > -144000 and (started_at - :date) < 0)', [
+                            ->andWhere('started_at = :date or ((started_at - :date) < 144000 and (started_at - :date) > 0) or ((started_at - :date) > -144000 and (started_at - :date) < 0)', [
                                 ':date' => $Event->getDate()
                             ])
-                            ->with('eventFixedValues')
+                            ->with([
+                                'eventFixedValues',
+                                'eventBookmakerVersion' => function (\yii\db\ActiveQuery $query) use ($Bookmaker) {
+                                    $query
+                                        ->andWhere('bookmaker = :bookmaker', [':bookmaker' => $Bookmaker->getKey()]);
+                                }
+                            ])
                             ->one();
                         if(!$model) {
                             $model                  = Event::getInstance($Sport->getSportType());
@@ -160,28 +171,38 @@ class SportController extends Controller
                             $model->template        = $Sport->getTemplate();
                             $model->started_at      = $Event->getDate();
                             $model->status          = Event::STATUS_NEW;
-                            $model->_v              = 1;
+                            $model->_v              = 0;
                             $model->bookmaker       = $Bookmaker->getKey();
                             if(!$model->save()) {
                                 throw new \Exception;
                             }
-                        }
 
-                        $old_odds = [];
-                        if(!$model->isNewRecord) {
+                            $EventBookmaker = new EventBookmakerVersion();
+                            $EventBookmaker->event_id = $model->id;
+                            $EventBookmaker->bookmaker = $Bookmaker->getKey();
+                            $EventBookmaker->_v = 0;
+                            if(!$EventBookmaker->save()) {
+                                throw new \Exception;
+                            }
+
+                            $model->setCurrentOddsArr($new_odds);
+                        } else {
+                            $EventBookmaker = $model->eventBookmakerVersion;
+
+                            $old_odds = [];
                             $Odds = EventOdds::find()
                                 ->select(['field', 'value'])
                                 ->andWhere('event_id = :event_id and _v = :_v', [
-                                    ':event_id' => $model->id,
-                                    ':_v' => $model->_v
+                                    ':event_id' => $EventBookmaker->event_id,
+                                    ':_v'       => $EventBookmaker->_v
                                 ])
                                 ->asArray()
                                 ->all();
                             foreach ($Odds as $_item) {
                                 $old_odds[$_item['field']] = $_item['value'];
                             }
+                            $model->setCurrentOddsArr($old_odds);
                         }
-                        $model->setCurrentOddsArr($old_odds);
 
                         $problem_list = [
                             EventProblem::PROBLEM_DATE,
@@ -200,9 +221,31 @@ class SportController extends Controller
                             ])->count();
                         $model->have_problem = $problem_count > 0 ? 1 : 0;
 
+
+                        if($model->_v == 0 || $new_odds != $model->getCurrentOddsArr()) {
+                            $EventBookmaker->_v += 1;
+                            if($model->bookmaker == $EventBookmaker->bookmaker) {
+                                $model->_v = $EventBookmaker->_v;
+                            }
+                            if($EventBookmaker > 1) {
+                                EventOdds::toOld($model->id, $EventBookmaker->bookmaker);
+                                EventOdds::toLast($model->id, $EventBookmaker->bookmaker);
+                            }
+
+                            EventOdds::add($model->id, $EventBookmaker->bookmaker, $EventBookmaker->_v, $new_odds);
+                        }
+                        if(!$EventBookmaker->save()) {
+                            throw new \Exception;
+                        }
+                        if(!$model->save()) {
+                            throw new \Exception;
+                        }
+
+                        var_dump($key);
                         $t->commit();
                     } catch (\Exception $ex) {
                         $t->rollBack();
+                        var_dump($ex->getMessage());
                     }
                 }
             }

@@ -3,6 +3,7 @@
 namespace common\models\event;
 
 use common\helpers\SportHelper;
+use common\models\EventBookmakerVersion;
 use common\models\EventFixedValue;
 use common\models\EventOdds;
 use common\models\EventProblem;
@@ -48,6 +49,8 @@ use yii\behaviors\TimestampBehavior;
  * @property EventOdds[] $eventOdds
  * @property EventProblem[] $eventProblems
  * @property EventResult[] $eventResults
+ * @property EventBookmakerVersion $eventBookmakerVersion
+ * @property EventBookmakerVersion[] $eventBookmakerVersions
  */
 class Event extends \yii\db\ActiveRecord implements iEvent
 {
@@ -204,7 +207,7 @@ class Event extends \yii\db\ActiveRecord implements iEvent
      */
     public function getEventOdds()
     {
-        return $this->hasMany(EventOdds::className(), ['event_id' => 'id', '_v' => '_v']);
+        return $this->hasMany(EventOdds::className(), ['event_id' => 'id', '_v' => '_v', 'bookmaker' => 'bookmaker']);
     }
 
     /**
@@ -221,6 +224,22 @@ class Event extends \yii\db\ActiveRecord implements iEvent
     public function getEventResults()
     {
         return $this->hasMany(EventResult::className(), ['event_id' => 'id']);
+    }
+
+    /**
+     * @return \yii\db\ActiveQuery
+     */
+    public function getEventBookmakerVersions()
+    {
+        return $this->hasMany(EventBookmakerVersion::className(), ['event_id' => 'id']);
+    }
+
+    /**
+     * @return \yii\db\ActiveQuery
+     */
+    public function getEventBookmakerVersion()
+    {
+        return $this->hasOne(EventBookmakerVersion::className(), ['event_id' => 'id']);
     }
 
     /**

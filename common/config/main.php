@@ -1,6 +1,10 @@
 <?php
 return [
     'vendorPath' => dirname(dirname(__DIR__)) . '/vendor',
+    'aliases' => [
+        '@YiiNodeSocket' => '@vendor/oncesk/yii-node-socket/lib/php',
+        '@nodeWeb' => '@vendor/oncesk/yii-node-socket/lib/js'
+    ],
     'components' => [
         'phantom' => [
             'class' => 'common\components\Phantom',
@@ -19,6 +23,9 @@ return [
         'authManager' => [
             'class' => 'yii\rbac\DbManager',
             'defaultRoles' => ['user']
+        ],
+        'nodeSocket' => [
+            'class' => '\YiiNodeSocket\NodeSocket',
         ],
     ],
 ];

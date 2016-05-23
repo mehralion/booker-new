@@ -29,8 +29,8 @@ class SiteController extends WebController
 
         EventOdds::find()
             ->andWhere(['in', 'event_id', array_keys($Events)])
-            ->andWhere(['in', 'type', ['ratio_p1', 'ratio_p2', 'ratio_x']])
-            ->andWhere('position = :position', EventOdds::POSITION_NEW)
+            ->andWhere(['in', 'field', ['ratio_p1', 'ratio_p2', 'ratio_x']])
+            ->andWhere('position = :position', [':position' => EventOdds::POSITION_NEW])
             ->asArray()
             ->all();
 

@@ -39,6 +39,7 @@ abstract class BaseApplication extends yii\base\Application
  * @property \yii\db\Connection $db
  * @property \common\components\Phantom $phantom
  * @property \common\components\Bookmaker $bookmaker
+ * @property \YiiNodeSocket\NodeSocket $nodeSocket
  *
  */
 class WebApplication extends yii\web\Application

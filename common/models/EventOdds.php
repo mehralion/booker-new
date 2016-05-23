@@ -92,25 +92,53 @@ class EventOdds extends \yii\db\ActiveRecord
         return new \common\models\query\EventOddsQuery(get_called_class());
     }
     
-    public static function toOld($event_id)
+    public static function toOld($event_id, $bookmaker)
     {
         return self::updateAll([
-            'position' => self::POSITION_OLD,
-            'updated_at' => time(),
-        ], 'event_id = :event_id and position = :position', [
-            ':event_id' => $event_id,
-            ':position' => self::POSITION_LAST
+            'position'      => self::POSITION_OLD,
+            'updated_at'    => time(),
+        ], 'event_id = :event_id and position = :position and bookmaker = :bookmaker', [
+            ':event_id'     => $event_id,
+            ':position'     => self::POSITION_LAST,
+            ':bookmaker'    => $bookmaker,
         ]);
     }
 
-    public static function toLast($event_id)
+    public static function toLast($event_id, $bookmaker)
     {
-        self::updateAll([
-            'position' => self::POSITION_LAST,
-            'update_at' => time()
-        ], 'event_id = :event_id and position = :position', [
-            ':event_id' => $event_id,
-            ':position' => self::POSITION_NEW
+        return self::updateAll([
+            'position'      => self::POSITION_LAST,
+            'updated_at'    => time()
+        ], 'event_id = :event_id and position = :position and bookmaker = :bookmaker', [
+            ':event_id'     => $event_id,
+            ':position'     => self::POSITION_NEW,
+            ':bookmaker'    => $bookmaker,
         ]);
+    }
+    
+    public static function add($event_id, $bookmaker, $v, $odds)
+    {
+        $rows = [];
+        foreach ($odds as $key => $value) {
+            if(!is_numeric($value)) {
+                continue;
+            }
+
+            $rows[] = [
+                'event_id'      => $event_id,
+                'field'         => $key,
+                '_v'            => $v,
+                'value'         => $value,
+                'position'      => self::POSITION_NEW,
+                'bookmaker'     => $bookmaker,
+                'updated_at'    => time(),
+                'created_at'    => time(),
+            ];
+        }
+
+        Yii::$app->db->createCommand()
+            ->batchInsert(self::tableName(), (new self)->attributes(), $rows)->execute();
+
+        return true;
     }
 }

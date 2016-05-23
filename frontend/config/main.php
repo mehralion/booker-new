@@ -9,10 +9,13 @@ $params = array_merge(
 return [
     'id' => 'app-frontend',
     'basePath' => dirname(__DIR__),
-    'bootstrap' => ['log'],
+    'bootstrap' => ['log', 'nodeSocket'],
     'controllerNamespace' => 'frontend\controllers',
     'layout' => 'main',
     'components' => [
+        'session' => [
+            'class' => 'common\components\Session'
+        ],
         'assetManager' => [
             'bundles' => [
                 'yii\bootstrap\BootstrapAsset' => [

@@ -119,7 +119,6 @@ class Phantom extends Component
         if($this->cookieFile) {
             $this->_client->getEngine()->addOption(sprintf('--cookies-file=%s', $this->cookieFile));
         }
-        $this->isDelay = false;
 
         return $this;
     }
@@ -165,7 +164,6 @@ class Phantom extends Component
             'User-Agent' => 'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.132 Safari/537.36',
             'Accept-charset' => 'utf-8',
             'Accept-Encoding' => 'gzip, deflate',
-            'Referer: http://example.org'
         ));
         if($this->referer) {
             $request->addHeader('Referer', $this->referer);

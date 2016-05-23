@@ -4,8 +4,8 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#composer-lock-the-lock-file",
         "This file is @generated automatically"
     ],
-    "hash": "fe5a1179622bf7efbb37494bf5c4c038",
-    "content-hash": "e05516ada554d1342c0a0fb1a79ee50d",
+    "hash": "b2279697df053dc1fa873e437cb4f8b7",
+    "content-hash": "cbd0b34678f9e88978d07784329a0107",
     "packages": [
         {
             "name": "bower-asset/bootstrap",
@@ -874,6 +874,79 @@
                 "php"
             ],
             "time": "2016-04-19 13:41:41"
+        },
+        {
+            "name": "oncesk/elephant.io",
+            "version": "v2.0.3",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/oncesk/elephant.io.git",
+                "reference": "5dcf6c06105ce8fc5a7caf36c64ff79ca9dd7993"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/oncesk/elephant.io/zipball/5dcf6c06105ce8fc5a7caf36c64ff79ca9dd7993",
+                "reference": "5dcf6c06105ce8fc5a7caf36c64ff79ca9dd7993",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=5.3.0"
+            },
+            "type": "lib",
+            "autoload": {
+                "psr-0": {
+                    "ElephantIO": "lib/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "GPL"
+            ],
+            "authors": [
+                {
+                    "name": "Ludovic Barreca"
+                }
+            ],
+            "description": "Send events to socket.io though PHP",
+            "keywords": [
+                "Socket.io",
+                "nodejs",
+                "websocket"
+            ],
+            "time": "2015-01-19 09:22:49"
+        },
+        {
+            "name": "oncesk/yii-node-socket",
+            "version": "2.0.4",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/oncesk/yii-node-socket.git",
+                "reference": "cc15bf4b7e675d8ce5373e20a51ca94534337e80"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/oncesk/yii-node-socket/zipball/cc15bf4b7e675d8ce5373e20a51ca94534337e80",
+                "reference": "cc15bf4b7e675d8ce5373e20a51ca94534337e80",
+                "shasum": ""
+            },
+            "require": {
+                "oncesk/elephant.io": "*"
+            },
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "YiiNodeSocket\\": "lib/php/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "authors": [
+                {
+                    "name": "Alexey Panasik",
+                    "email": "unnfly@gmail.com"
+                }
+            ],
+            "description": "Реализует связь между php и client javascript по средству сокет соединения.",
+            "time": "2015-07-07 09:46:51"
         },
         {
             "name": "psr/http-message",
