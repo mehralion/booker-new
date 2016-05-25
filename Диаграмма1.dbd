@@ -368,7 +368,7 @@
             </Location>
             <Size>
               <Width>179 px</Width>
-              <Height>110 px</Height>
+              <Height>127 px</Height>
             </Size>
             <DbOid>
               <Path>bukerdb.settings</Path>
@@ -1673,8 +1673,8 @@
           <ScaleMode>Free</ScaleMode>
           <Scale>0.74</Scale>
           <Location>
-            <X>-390.540535507453 px</X>
-            <Y>-951.351337605623 px</Y>
+            <X>-1320.27025347369 px</X>
+            <Y>-1297.29728057839 px</Y>
           </Location>
         </ViewPort>
       </Model>

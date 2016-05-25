@@ -10,5 +10,5 @@ namespace common\models\event;
 
 interface iEvent
 {
-
+    public function canAuto();
 }

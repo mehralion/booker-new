@@ -46,8 +46,7 @@ class Phantom extends Component
             $this->_client->getEngine()->addOption(sprintf('--config=%s', $this->pathToConfig));
         }
 
-        $this->_client->getEngine()->setPath(ROOT_DIR.'/bin/phantomjs.exe');
-
+        $this->_client->getEngine()->setPath($this->pathToPhantomJS);
         $this->defaultOptions = $this->_client->getEngine()->getOptions();
     }
 
@@ -111,10 +110,11 @@ class Phantom extends Component
     protected function prepareOptions()
     {
         $this->_client->getEngine()->setOptions($this->defaultOptions);
-        if($this->useProxy && ($proxy = $this->getProxy())) {
+        /*if($this->useProxy && ($proxy = $this->getProxy())) {
             $this->cookieFile = sprintf('%s/cookie/%s.txt', ROOT_DIR, $proxy);
             $this->_client->getEngine()->addOption(sprintf('--proxy=%s', $proxy));
-        }
+        }*/
+        $this->_client->getEngine()->addOption(sprintf('--proxy=%s', '192.168.33.1:8888'));
 
         if($this->cookieFile) {
             $this->_client->getEngine()->addOption(sprintf('--cookies-file=%s', $this->cookieFile));
@@ -130,7 +130,7 @@ class Phantom extends Component
             $this->isDelay = true;
             $response = $this->request($link);
         }
-
+        
         return $response;
     }
 
@@ -148,18 +148,17 @@ class Phantom extends Component
     protected function request($link, $data = [], $request = 'GET')
     {
         $this->prepareOptions();
-
         /**
          * @see JonnyW\PhantomJs\Message\Request
          **/
         $request = $this->_client->getMessageFactory()->createRequest($link, $request);
         if($this->isDelay) {
-            $request->setDelay($this->delay);
+            //$request->setDelay($this->delay);
         }
+        //$request->setTimeout(10);
         if($data) {
             $request->setRequestData($data);
         }
-
         $request->addHeaders(array(
             'User-Agent' => 'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.132 Safari/537.36',
             'Accept-charset' => 'utf-8',
@@ -176,7 +175,8 @@ class Phantom extends Component
 
         // Send the request
         $this->_client->send($request, $response);
+        $content = $response->getContent();
 
-        return $response->getContent();
+        return $content;
     }
 }

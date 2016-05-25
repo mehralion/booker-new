@@ -9,6 +9,8 @@ namespace common\models\event;
 
 
 use common\helpers\SportHelper;
+use common\models\event\odds\TennisOdds;
+use common\models\event\result\TennisResult;
 use common\models\query\EventQuery;
 
 class TennisEvent extends Event
@@ -17,6 +19,10 @@ class TennisEvent extends Event
     {
         $this->sport_type = SportHelper::SPORT_TENNIS;
         parent::init();
+
+        $this->old_odds = new TennisOdds();
+        $this->new_odds = new TennisOdds();
+        $this->event_result = new TennisResult();
     }
 
     public static function find()

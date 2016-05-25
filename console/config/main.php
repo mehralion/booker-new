@@ -12,7 +12,10 @@ return [
     'bootstrap' => ['log'],
     'controllerNamespace' => 'console\controllers',
     'controllerMap' => [
-        'node-socket' => 'console\controllers\NodeSocketController',
+        'node-socket' => [
+            'class' => 'console\controllers\NodeSocketController',
+            'pathToNodeJs' => 'nodejs'
+        ],
     ],
     'components' => [
         'log' => [

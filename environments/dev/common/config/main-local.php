@@ -17,10 +17,9 @@ return [
             'useFileTransport' => true,
         ],
         'phantom' => [
-            'pathToPhantomJS' => ROOT_DIR.'/bin/phantomjs.exe'
+            'pathToPhantomJS' => ROOT_DIR.'/bin/phantomjs'
         ],
         'nodeSocket' => [
-            'ip' => 'b.oldbk.local',
             'host' => 'b.oldbk.local',
             'allowedServerAddresses' => [
                 "localhost",

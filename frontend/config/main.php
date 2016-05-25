@@ -9,7 +9,7 @@ $params = array_merge(
 return [
     'id' => 'app-frontend',
     'basePath' => dirname(__DIR__),
-    'bootstrap' => ['log', 'nodeSocket'],
+    'bootstrap' => ['log', 'nodeSocket', 'session'],
     'controllerNamespace' => 'frontend\controllers',
     'layout' => 'main',
     'components' => [

@@ -14,7 +14,9 @@ abstract class BaseEvent implements iBookmakerEvent
 {
     protected $date;
     protected $team_1;
+    protected $team_1_alias;
     protected $team_2;
+    protected $team_2_alias;
     protected $odds = [];
     protected $sport_id;
 
@@ -110,6 +112,44 @@ abstract class BaseEvent implements iBookmakerEvent
     public function setSportId($sport_id)
     {
         $this->sport_id = $sport_id;
+        return $this;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getTeam1()
+    {
+        return $this->team_1;
+    }
+
+    /**
+     * @param mixed $team_1
+     *
+     * @return $this
+     */
+    public function setTeam1($team_1)
+    {
+        $this->team_1 = $team_1;
+        return $this;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getTeam2()
+    {
+        return $this->team_2;
+    }
+
+    /**
+     * @param mixed $team_2
+     *
+     * @return $this
+     */
+    public function setTeam2($team_2)
+    {
+        $this->team_2 = $team_2;
         return $this;
     }
 }

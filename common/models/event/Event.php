@@ -3,6 +3,8 @@
 namespace common\models\event;
 
 use common\helpers\SportHelper;
+use common\models\event\odds\iEventOdds;
+use common\models\event\result\iEventResult;
 use common\models\EventBookmakerVersion;
 use common\models\EventFixedValue;
 use common\models\EventOdds;
@@ -12,6 +14,7 @@ use common\models\sport\Sport;
 use common\models\Team;
 use common\models\TeamAlias;
 use Yii;
+use yii\base\Model;
 use yii\behaviors\TimestampBehavior;
 
 /**
@@ -59,7 +62,12 @@ class Event extends \yii\db\ActiveRecord implements iEvent
     const STATUS_DISABLE    = 'disable';
     const STATUS_FINISH     = 'finish';
 
-    protected $current_odds_arr = [];
+    /** @var iEventOdds */
+    protected $new_odds;
+    /** @var iEventOdds */
+    protected $old_odds;
+    /** @var iEventResult */
+    protected $event_result;
 
     /**
      * @inheritdoc
@@ -120,11 +128,11 @@ class Event extends \yii\db\ActiveRecord implements iEvent
             [['sport_id', 'started_at', 'team_1_id', 'team_1_alias', 'team_2_id', 'team_2_alias', '_v', 'have_result', 'have_problem', 'is_not_auto', 'updated_at', 'created_at'], 'integer'],
             [['admin_text', 'not_auto_reason', 'team_1', 'team_2'], 'string'],
             [['extra_ratio'], 'number'],
-            [['team_1_alias'], 'exist', 'skipOnError' => true, 'targetClass' => TeamAlias::className(), 'targetAttribute' => ['team_1_alias' => 'id']],
-            [['team_1_id'], 'exist', 'skipOnError' => true, 'targetClass' => Team::className(), 'targetAttribute' => ['team_1_id' => 'id']],
-            [['team_2_alias'], 'exist', 'skipOnError' => true, 'targetClass' => TeamAlias::className(), 'targetAttribute' => ['team_2_alias' => 'id']],
-            [['team_2_id'], 'exist', 'skipOnError' => true, 'targetClass' => Team::className(), 'targetAttribute' => ['team_2_id' => 'id']],
-            [['sport_id'], 'exist', 'skipOnError' => true, 'targetClass' => Sport::className(), 'targetAttribute' => ['sport_id' => 'id']],
+            //[['team_1_alias'], 'exist', 'skipOnError' => true, 'targetClass' => TeamAlias::className(), 'targetAttribute' => ['team_1_alias' => 'id']],
+            //[['team_1_id'], 'exist', 'skipOnError' => true, 'targetClass' => Team::className(), 'targetAttribute' => ['team_1_id' => 'id']],
+            //[['team_2_alias'], 'exist', 'skipOnError' => true, 'targetClass' => TeamAlias::className(), 'targetAttribute' => ['team_2_alias' => 'id']],
+            //[['team_2_id'], 'exist', 'skipOnError' => true, 'targetClass' => Team::className(), 'targetAttribute' => ['team_2_id' => 'id']],
+            //[['sport_id'], 'exist', 'skipOnError' => true, 'targetClass' => Sport::className(), 'targetAttribute' => ['sport_id' => 'id']],
         ];
     }
 
@@ -252,21 +260,62 @@ class Event extends \yii\db\ActiveRecord implements iEvent
     }
 
     /**
-     * @return array
+     * @return iEventOdds|Model
      */
-    public function getCurrentOddsArr()
+    public function getNewOdds()
     {
-        return $this->current_odds_arr;
+        return $this->new_odds;
     }
 
     /**
-     * @param array $current_odds_arr
-     *
-     * @return $this
+     * @return iEventOdds|Model
      */
-    public function setCurrentOddsArr($current_odds_arr)
+    public function getOldOdds()
     {
-        $this->current_odds_arr = $current_odds_arr;
-        return $this;
+        return $this->old_odds;
+    }
+
+    /**
+     * @return iEventResult
+     */
+    public function getEventResult()
+    {
+        return $this->event_result;
+    }
+
+    public function canAuto()
+    {
+        if($this->status != self::STATUS_NEW) {
+            $this->is_not_auto = true;
+            $this->not_auto_reason = 'Запись не является новой и не может быть включено автоматически';
+
+            return false;
+        }
+
+        if($this->have_problem) {
+            $this->is_not_auto = true;
+            $this->not_auto_reason = 'Имеется проблема';
+
+            return false;
+        }
+
+        if($this->started_at >= strtotime('+5 days'))
+            return false;
+
+        if(!$this->getNewOdds()->canAuto()) {
+            $this->is_not_auto = true;
+            $this->not_auto_reason = $this->getNewOdds()->getNotAutoReason();
+
+            return false;
+        }
+
+        if(preg_match('/^\d\w+/ui', $this->getTeam1()) || preg_match('/^\d\w+/ui', $this->getTeam2())) {
+            $this->is_not_auto = true;
+            $this->not_auto_reason = 'Команда начинается с цифры и слитно с тектом';
+
+            return false;
+        }
+
+        return true;
     }
 }

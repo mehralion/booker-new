@@ -9,6 +9,7 @@ use common\models\EventProblem;
 use common\models\sport\Sport;
 use common\models\SportAlias;
 use yii\console\Controller;
+use yii\helpers\Console;
 
 /**
  * Site controller
@@ -107,38 +108,42 @@ class SportController extends Controller
         foreach ($Bookmakers as $Bookmaker) {
             $SportAliases = SportAlias::find()
                 ->alias('t')
-                ->select(['t.link', 't.sport_id'])
-                ->with([
+                ->select(['t.link', 't.sport_id', 'sport.sport_type'])
+                ->joinWith([
                     'sport' => function (\yii\db\ActiveQuery $query) {
-                        $query
-                            ->select(['sport_type', 'id'])
-                            ->andWhere('status = :enable', [':enable' => Sport::STATUS_ENABLE]);
+                        $query->select('id');
                     }
-                ])
+                ], true, 'INNER JOIN')
                 ->andWhere('bookmaker = :bookmaker', [':bookmaker' => $Bookmaker->getKey()])
+                ->andWhere('sport.status = :enable', [':enable' => Sport::STATUS_ENABLE])
                 ->asArray()
                 ->all();
 
+            $this->log('Sport count: %d', count($SportAliases));
             foreach ($SportAliases as $alias) {
                 $Sport = $Bookmaker->getSport();
                 $Sport
                     ->setLink($alias['link'])
-                    ->setSportType($alias['sport']['sport_type']);
+                    ->setSportType($alias['sport_type']);
 
                 $SportEvents = $Bookmaker->getEvents($Sport);
-                var_dump('Events: '.$SportEvents->count());
+                $this->log('Event count: %d', $SportEvents->count());
                 if($SportEvents->isEmpty()) {
                     continue;
                 }
 
                 foreach ($SportEvents as $key => $Event) {
-                    $Event->setSportId($alias['sport']['id']);
+                    $Event->setSportId($alias['sport_id']);
                     
                     $t = \Yii::$app->db->beginTransaction();
                     try {
-                        $new_odds = $Event->getOdds();
-
                         $model = Event::find()
+                            ->with(['eventFixedValues'])
+                            ->joinWith([
+                                'eventBookmakerVersion' => function (\yii\db\ActiveQuery $query) {
+                                    $query->alias('ebv');
+                                }
+                            ], true, 'INNER JOIN')
                             ->andWhere('team_1_id = :team_1_id and team_2_id = :team_2_id', [
                                 ':team_1_id' => $Event->getTeam1Alias()->team_id,
                                 ':team_2_id' => $Event->getTeam2Alias()->team_id,
@@ -147,14 +152,11 @@ class SportController extends Controller
                             ->andWhere('started_at = :date or ((started_at - :date) < 144000 and (started_at - :date) > 0) or ((started_at - :date) > -144000 and (started_at - :date) < 0)', [
                                 ':date' => $Event->getDate()
                             ])
-                            ->with([
-                                'eventFixedValues',
-                                'eventBookmakerVersion' => function (\yii\db\ActiveQuery $query) use ($Bookmaker) {
-                                    $query
-                                        ->andWhere('bookmaker = :bookmaker', [':bookmaker' => $Bookmaker->getKey()]);
-                                }
-                            ])
+                            ->andWhere('ebv.bookmaker = :bookmaker', [':bookmaker' => $Bookmaker->getKey()])
                             ->one();
+
+                        $new_odds = $Event->getOdds();
+                        $old_odds = [];
                         if(!$model) {
                             $model                  = Event::getInstance($Sport->getSportType());
 
@@ -166,10 +168,8 @@ class SportController extends Controller
                             $model->team_2_id       = $Event->getTeam2Alias()->team_id;
                             $model->team_2_alias    = $Event->getTeam2Alias()->id;
 
-                            $model->sport_id        = $alias['sport']['id'];
-                            $model->sport_type      = $alias['sport']['sport_type'];
+                            $model->sport_type      = $alias['sport_type'];
                             $model->template        = $Sport->getTemplate();
-                            $model->started_at      = $Event->getDate();
                             $model->status          = Event::STATUS_NEW;
                             $model->_v              = 0;
                             $model->bookmaker       = $Bookmaker->getKey();
@@ -185,11 +185,9 @@ class SportController extends Controller
                                 throw new \Exception;
                             }
 
-                            $model->setCurrentOddsArr($new_odds);
                         } else {
                             $EventBookmaker = $model->eventBookmakerVersion;
 
-                            $old_odds = [];
                             $Odds = EventOdds::find()
                                 ->select(['field', 'value'])
                                 ->andWhere('event_id = :event_id and _v = :_v', [
@@ -201,8 +199,11 @@ class SportController extends Controller
                             foreach ($Odds as $_item) {
                                 $old_odds[$_item['field']] = $_item['value'];
                             }
-                            $model->setCurrentOddsArr($old_odds);
+                            $model->getOldOdds()->setAttributes($old_odds);
                         }
+                        $model->getNewOdds()->setAttributes($new_odds);
+                        $model->sport_id        = $alias['sport_id'];
+                        $model->started_at      = $Event->getDate();
 
                         $problem_list = [
                             EventProblem::PROBLEM_DATE,
@@ -220,14 +221,19 @@ class SportController extends Controller
                                 ':event_id' => $model->id
                             ])->count();
                         $model->have_problem = $problem_count > 0 ? 1 : 0;
+                        $this->log('Problem count %d', $problem_count);
 
 
-                        if($model->_v == 0 || $new_odds != $model->getCurrentOddsArr()) {
+                        if($model->_v == 0 || $new_odds != $old_odds) {
+                            $this->log('New Odds');
+
                             $EventBookmaker->_v += 1;
                             if($model->bookmaker == $EventBookmaker->bookmaker) {
                                 $model->_v = $EventBookmaker->_v;
                             }
-                            if($EventBookmaker > 1) {
+                            if($EventBookmaker->_v > 1) {
+                                $this->log('Put LAST to OLD and NEW to LAST');
+
                                 EventOdds::toOld($model->id, $EventBookmaker->bookmaker);
                                 EventOdds::toLast($model->id, $EventBookmaker->bookmaker);
                             }
@@ -237,11 +243,27 @@ class SportController extends Controller
                         if(!$EventBookmaker->save()) {
                             throw new \Exception;
                         }
+
+                        switch ($model->status) {
+                            case Event::STATUS_NEW:
+                                if(\Yii::$app->settings->book()->autoapprove && $model->canAuto()) {
+                                    $model->status = Event::STATUS_ENABLE;
+                                    $this->log('Event is auto approved');
+                                }
+                                break;
+                            case Event::STATUS_ENABLE:
+                                $model->is_not_auto = false;
+                                $model->not_auto_reason = null;
+
+                                $this->log('Event is enabled. Clear auto approve settings');
+                                break;
+                        }
+
                         if(!$model->save()) {
                             throw new \Exception;
                         }
 
-                        var_dump($key);
+                        $this->log('Event saved');
                         $t->commit();
                     } catch (\Exception $ex) {
                         $t->rollBack();
@@ -250,5 +272,13 @@ class SportController extends Controller
                 }
             }
         }
+    }
+
+    protected function log($string)
+    {
+        $args = func_get_args();
+        array_shift($args);
+
+        $this->stdout(vsprintf($string, $args)."\n", Console::FG_RED);
     }
 }

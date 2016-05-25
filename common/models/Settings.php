@@ -11,9 +11,13 @@ use yii\behaviors\TimestampBehavior;
  * @property string $field
  * @property string $value
  * @property integer $updated_at
+ * @property string $type
  */
 class Settings extends \yii\db\ActiveRecord
 {
+    const TYPE_BOOKMAKER = 'bookmaker';
+    const TYPE_CURRENCY = 'currency';
+
     /**
      * @inheritdoc
      */

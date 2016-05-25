@@ -20,6 +20,9 @@ use yii\behaviors\TimestampBehavior;
  */
 class SettingsCurrency extends \yii\db\ActiveRecord
 {
+    const CURRENCY_KR   = 'kr';
+    const CURRENCY_EKR  = 'ekr';
+
     /**
      * @inheritdoc
      */

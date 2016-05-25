@@ -18,7 +18,7 @@ class Bookmaker extends Component
     public function init()
     {
         $bookmakers = \common\models\Bookmaker::find()
-            ->with(['bookmakerAliases'])
+            ->joinWith(['bookmakerAliases'], false)
             ->andWhere('is_enabled = 1')
             ->all();
 

@@ -9,6 +9,8 @@ namespace common\models\event;
 
 
 use common\helpers\SportHelper;
+use common\models\event\odds\HokkeyOdds;
+use common\models\event\result\HokkeyResult;
 use common\models\query\EventQuery;
 
 class HokkeyEvent extends Event
@@ -17,6 +19,10 @@ class HokkeyEvent extends Event
     {
         $this->sport_type = SportHelper::SPORT_HOKKEY;
         parent::init();
+
+        $this->old_odds = new HokkeyOdds();
+        $this->new_odds = new HokkeyOdds();
+        $this->event_result = new HokkeyResult();
     }
 
     public static function find()
