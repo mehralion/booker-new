@@ -36,7 +36,7 @@ interface iBookmaker
      */
     public function setRegexpIgnoreEvent($regexp);
 
-    public function connect();
+    public function connect($proxy = null);
 
     /**
      * @param $key
@@ -44,8 +44,18 @@ interface iBookmaker
      */
     public function setKey($key);
 
-
     public function getKey();
+
+    /**
+     * @return int
+     */
+    public function getId();
+
+    /**
+     * @param $id
+     * @return self
+     */
+    public function setId($id);
 
     /**
      * @return iSport
@@ -63,4 +73,15 @@ interface iBookmaker
      * @return iBookmakerEvent[]|ArrayCollection
      */
     public function getEvents($Sport);
+
+    /**
+     * @param $isProxyUse
+     * @return self
+     */
+    public function setUseProxy($isProxyUse);
+
+    /**
+     * @return boolean
+     */
+    public function isProxyUse();
 }

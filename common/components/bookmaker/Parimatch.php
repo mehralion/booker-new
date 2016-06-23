@@ -40,13 +40,18 @@ class Parimatch extends BaseBookmaker
             ->delay(8);
     }
 
-    public function connect()
+    public function connect($proxy = null)
     {
         $time_start = microtime(true);
 
+        $client = $this->client;
+        if($proxy) {
+            $client->proxy($proxy);
+        }
+
         $r = false;
         foreach ($this->getAliases() as $alias) {
-            $response = $this->client->get($alias, true);
+            $response = $client->get($alias, true);
             if(preg_match('/Результаты live/ui', $response)) {
                 $this->work_host = $alias;
 

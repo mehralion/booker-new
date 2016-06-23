@@ -19,6 +19,8 @@ abstract class BaseBookmaker implements iBookmaker
     protected $regexp_ignore_event;
     protected $key;
     protected $work_host = null;
+    protected $is_proxy_use = false;
+    protected $id;
 
     /**
      * @return array
@@ -146,5 +148,35 @@ abstract class BaseBookmaker implements iBookmaker
         $TeamAlias->save();
 
         return $TeamAlias;
+    }
+
+    public function setUseProxy($isProxyUse)
+    {
+        $this->is_proxy_use = $isProxyUse;
+        return $this;
+    }
+
+    public function isProxyUse()
+    {
+        return $this->is_proxy_use;
+    }
+
+    /**
+     * @return mixed
+     */
+    public function getId()
+    {
+        return $this->id;
+    }
+
+    /**
+     * @param mixed $id
+     *
+     * @return $this
+     */
+    public function setId($id)
+    {
+        $this->id = $id;
+        return $this;
     }
 }

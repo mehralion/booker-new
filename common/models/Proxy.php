@@ -7,15 +7,20 @@ use Yii;
 /**
  * This is the model class for table "proxy".
  *
+ * @property integer $id
  * @property string $ip
  * @property integer $port
  * @property integer $delay
  * @property string $country_code
  * @property string $country_name
  * @property integer $is_enabled
+ * @property integer $attemt
+ * @property string $source
  * @property integer $updated_at
  * @property integer $created_at
- * @property integer $attemt
+ *
+ * @property BookmakerProxy[] $bookmakerProxies
+ * @property Bookmaker[] $bookmakers
  */
 class Proxy extends \yii\db\ActiveRecord
 {
@@ -33,9 +38,9 @@ class Proxy extends \yii\db\ActiveRecord
     public function rules()
     {
         return [
-            [['ip', 'port', 'delay'], 'required'],
+            [['ip', 'port', 'source'], 'required'],
             [['port', 'delay', 'is_enabled', 'updated_at', 'created_at', 'attemt'], 'integer'],
-            [['ip', 'country_code'], 'string', 'max' => 255],
+            [['ip', 'country_code', 'source'], 'string', 'max' => 255],
             [['country_name'], 'string', 'max' => 50],
         ];
     }
@@ -46,6 +51,7 @@ class Proxy extends \yii\db\ActiveRecord
     public function attributeLabels()
     {
         return [
+            'id' => 'ID',
             'ip' => 'Ip',
             'port' => 'Port',
             'delay' => 'Delay',
@@ -56,6 +62,22 @@ class Proxy extends \yii\db\ActiveRecord
             'created_at' => 'Created At',
             'attemt' => 'Attemt',
         ];
+    }
+
+    /**
+     * @return \yii\db\ActiveQuery
+     */
+    public function getBookmakerProxies()
+    {
+        return $this->hasMany(BookmakerProxy::className(), ['proxy_id' => 'id']);
+    }
+
+    /**
+     * @return \yii\db\ActiveQuery
+     */
+    public function getBookmakers()
+    {
+        return $this->hasMany(Bookmaker::className(), ['id' => 'bookmaker_id'])->viaTable('bookmaker_proxy', ['proxy_id' => 'id']);
     }
 
     /**

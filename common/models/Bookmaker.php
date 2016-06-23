@@ -12,12 +12,15 @@ use Yii;
  * @property string $key
  * @property string $ignore_sport_regexp
  * @property string $ignore_event_regexp
- * @property string $class
  * @property integer $is_enabled
  * @property integer $updated_at
  * @property integer $created_at
+ * @property string $class
+ * @property int $use_proxy
  *
  * @property BookmakerAlias[] $bookmakerAliases
+ * @property BookmakerProxy[] $bookmakerProxies
+ * @property Proxy[] $proxies
  */
 class Bookmaker extends \yii\db\ActiveRecord
 {
@@ -37,7 +40,7 @@ class Bookmaker extends \yii\db\ActiveRecord
         return [
             [['title', 'key'], 'required'],
             [['ignore_sport_regexp', 'ignore_event_regexp'], 'string'],
-            [['updated_at', 'created_at', 'is_enabled'], 'integer'],
+            [['is_enabled', 'updated_at', 'created_at', 'use_proxy'], 'integer'],
             [['title', 'key', 'class'], 'string', 'max' => 255],
         ];
     }
@@ -53,8 +56,10 @@ class Bookmaker extends \yii\db\ActiveRecord
             'key' => 'Key',
             'ignore_sport_regexp' => 'Ignore Sport Regexp',
             'ignore_event_regexp' => 'Ignore Event Regexp',
+            'is_enabled' => 'Is Enabled',
             'updated_at' => 'Updated At',
             'created_at' => 'Created At',
+            'class' => 'Class',
         ];
     }
 
@@ -64,6 +69,22 @@ class Bookmaker extends \yii\db\ActiveRecord
     public function getBookmakerAliases()
     {
         return $this->hasMany(BookmakerAlias::className(), ['bookmaker_id' => 'id']);
+    }
+
+    /**
+     * @return \yii\db\ActiveQuery
+     */
+    public function getBookmakerProxies()
+    {
+        return $this->hasMany(BookmakerProxy::className(), ['bookmaker_id' => 'id']);
+    }
+
+    /**
+     * @return \yii\db\ActiveQuery
+     */
+    public function getProxies()
+    {
+        return $this->hasMany(Proxy::className(), ['id' => 'proxy_id'])->viaTable('bookmaker_proxy', ['bookmaker_id' => 'id']);
     }
 
     /**

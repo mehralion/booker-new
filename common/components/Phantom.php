@@ -22,7 +22,7 @@ class Phantom extends Component
     protected $defaultOptions = [];
     protected $referer = null;
 
-    public $useProxy;
+    public $proxy;
 
     public $isDelay = false;
     public $delay;
@@ -62,12 +62,12 @@ class Phantom extends Component
     }
 
     /**
-     * @param bool $useProxy
+     * @param bool $proxy
      * @return $this
      */
-    public function useProxy($useProxy = true)
+    public function proxy($proxy)
     {
-        $this->useProxy = $useProxy;
+        $this->proxy = $proxy;
         return $this;
     }
 
@@ -79,14 +79,6 @@ class Phantom extends Component
     {
         $this->delay = $delay;
         return $this;
-    }
-
-    /**
-     * @return string
-     */
-    protected function getProxy()
-    {
-        return $this->proxy_list[array_rand($this->proxy_list)];
     }
 
     /**
@@ -110,11 +102,11 @@ class Phantom extends Component
     protected function prepareOptions()
     {
         $this->_client->getEngine()->setOptions($this->defaultOptions);
-        /*if($this->useProxy && ($proxy = $this->getProxy())) {
-            $this->cookieFile = sprintf('%s/cookie/%s.txt', ROOT_DIR, $proxy);
-            $this->_client->getEngine()->addOption(sprintf('--proxy=%s', $proxy));
-        }*/
-        $this->_client->getEngine()->addOption(sprintf('--proxy=%s', '192.168.33.1:8888'));
+        if($this->proxy) {
+            $this->cookieFile = sprintf('%s/cookie/%s.txt', ROOT_DIR, $this->proxy);
+            $this->_client->getEngine()->addOption(sprintf('--proxy=%s', $this->proxy));
+        }
+        //$this->_client->getEngine()->addOption(sprintf('--proxy=%s', '192.168.33.1:8888'));
 
         if($this->cookieFile) {
             $this->_client->getEngine()->addOption(sprintf('--cookies-file=%s', $this->cookieFile));
@@ -129,6 +121,7 @@ class Phantom extends Component
         if($isDelay === true && preg_match('/challenge-form/ui', $response)) {
             $this->isDelay = true;
             $response = $this->request($link);
+            $this->isDelay = false;
         }
         
         return $response;

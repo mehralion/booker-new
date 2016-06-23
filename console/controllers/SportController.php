@@ -30,6 +30,10 @@ class SportController extends Controller
 
         $Bookmakers = \Yii::$app->bookmaker->getList();
         foreach ($Bookmakers as $Bookmaker) {
+            if($Bookmaker->connect() === false) {
+                continue;
+            }
+
             $SportList = $Bookmaker->getSportList($sport_type);
             var_dump('Sport: '.count($SportList));
             $titles = [];
@@ -99,13 +103,12 @@ class SportController extends Controller
 
     public function actionEvent()
     {
-        if(!\Yii::$app->bookmaker->haveBookmaker()) {
-            //@TODO Logging
-            return;
-        }
-
         $Bookmakers = \Yii::$app->bookmaker->getList();
         foreach ($Bookmakers as $Bookmaker) {
+            if($Bookmaker->connect() === false) {
+                continue;
+            }
+
             $SportAliases = SportAlias::find()
                 ->alias('t')
                 ->select(['t.link', 't.sport_id', 'sport.sport_type'])
