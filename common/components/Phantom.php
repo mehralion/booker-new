@@ -8,26 +8,32 @@
 namespace common\components;
 
 
-use common\models\Proxy;
+use Campo\UserAgent;
+use common\components\bookmaker\_interface\iClient;
+use common\models\ProxyCaptcha;
 use JonnyW\PhantomJs\DependencyInjection\ServiceContainer;
 use yii\base\Component;
 use JonnyW\PhantomJs\Client;
+use yii\helpers\ArrayHelper;
 
-class Phantom extends Component
+class Phantom extends Component implements iClient
 {
     /** @var Client */
     private $_client = null;
-    protected $proxy_list = [];
-    protected $cookieFile = null;
-    protected $defaultOptions = [];
-    protected $referer = null;
+    protected $defaultClientOptions = [];
 
-    public $proxy;
-
-    public $isDelay = false;
-    public $delay;
     public $pathToConfig;
     public $pathToPhantomJS;
+
+    private $isDelay = false;
+
+    protected $defaultOptions = [
+        'delay'     => 0,
+        'proxy'     => null,
+        'referer'   => null,
+        'cookie'    => null,
+    ];
+    protected $options = [];
 
     public function init()
     {
@@ -39,15 +45,32 @@ class Phantom extends Component
         $this->_client = Client::getInstance();
         $this->_client->getProcedureLoader()->addLoader($procedureLoader);
 
-        $this->populateProxyList();
-
-        $this->cookieFile = sprintf('%s/cookie/cookie.txt', ROOT_DIR);
         if($this->pathToConfig !== null) {
             $this->_client->getEngine()->addOption(sprintf('--config=%s', $this->pathToConfig));
         }
 
         $this->_client->getEngine()->setPath($this->pathToPhantomJS);
-        $this->defaultOptions = $this->_client->getEngine()->getOptions();
+        $this->defaultClientOptions = $this->_client->getEngine()->getOptions();
+    }
+
+    /**
+     * @param $proxy
+     * @return $this
+     */
+    public function proxy($proxy)
+    {
+        $this->options['proxy'] = $proxy;
+        return $this;
+    }
+
+    /**
+     * @param $delay
+     * @return $this
+     */
+    public function delay($delay)
+    {
+        $this->options['delay'] = $delay;
+        return $this;
     }
 
     /**
@@ -56,71 +79,62 @@ class Phantom extends Component
      */
     public function referer($referer)
     {
-        $this->referer = $referer;
-
-        return $this;
-    }
-
-    /**
-     * @param bool $proxy
-     * @return $this
-     */
-    public function proxy($proxy)
-    {
-        $this->proxy = $proxy;
-        return $this;
-    }
-
-    /**
-     * @param int $delay
-     * @return $this
-     */
-    public function delay($delay = 0)
-    {
-        $this->delay = $delay;
+        $this->options['referer'] = $referer;
         return $this;
     }
 
     /**
      * @return $this
      */
-    protected function populateProxyList()
+    public function clearOptions()
     {
-        $this->proxy_list = [];
-        $List = Proxy::find()
-            ->active()
-            ->select(['ip', 'port'])
-            ->asArray()
-            ->all();
-        foreach ($List as $_item) {
-            $this->proxy_list[] = sprintf('%s:%s', $_item['ip'], $_item['port']);
-        }
-
+        $this->options = [];
         return $this;
     }
 
-    protected function prepareOptions()
+    /**
+     * @param $options
+     * @return $this
+     */
+    public function setOptions($options)
     {
-        $this->_client->getEngine()->setOptions($this->defaultOptions);
-        if($this->proxy) {
-            $this->cookieFile = sprintf('%s/cookie/%s.txt', ROOT_DIR, $this->proxy);
-            $this->_client->getEngine()->addOption(sprintf('--proxy=%s', $this->proxy));
-        }
-        //$this->_client->getEngine()->addOption(sprintf('--proxy=%s', '192.168.33.1:8888'));
-
-        if($this->cookieFile) {
-            $this->_client->getEngine()->addOption(sprintf('--cookies-file=%s', $this->cookieFile));
-        }
-
+        $this->options = $options;
         return $this;
     }
 
-    public function get($link, $isDelay = false)
+    public function get($link, $repeat = false)
     {
+        var_dump($link);
         $response = $this->request($link);
-        if($isDelay === true && preg_match('/challenge-form/ui', $response)) {
+        if(preg_match('/Why do I have to complete a CAPTCHA/ui', $response)) {
+            if(isset($this->options['proxy'])) {
+                $proxy = explode(':', $this->options['proxy']);
+                $ProxyCaptcha = ProxyCaptcha::find()
+                    ->alias('t')
+                    ->andWhere('`t`.ip = :ip and `t`.port = :port and `t`.link = :link',
+                        [
+                            ':ip'   => $proxy[0],
+                            ':port' => $proxy[1],
+                            ':link' => $link
+                        ])
+                    ->count();
+                if(!$ProxyCaptcha) {
+                    $ProxyCaptcha = new ProxyCaptcha();
+                    $ProxyCaptcha->ip = $proxy[0];
+                    $ProxyCaptcha->port = $proxy[1];
+                    $ProxyCaptcha->link = $link;
+                    $ProxyCaptcha->save();
+                }
+            }
+
+            var_dump('CAPTCHA');
+            return null;
+        }
+
+        var_dump($response);
+        if($repeat === false && preg_match('/challenge-form/ui', $response)) {
             $this->isDelay = true;
-            $response = $this->request($link);
+            $response = $this->get($link, true);
             $this->isDelay = false;
         }
         
@@ -140,25 +154,34 @@ class Phantom extends Component
      */
     protected function request($link, $data = [], $request = 'GET')
     {
-        $this->prepareOptions();
+        $options = ArrayHelper::merge($this->defaultOptions, $this->options);
+        $this->_client->getEngine()->setOptions($this->defaultClientOptions);
+        if($options['proxy']) {
+            $options['cookie'] = sprintf('%s/cookie/%s.txt', ROOT_DIR, str_replace(['.', ':'], '_', $options['proxy']));
+            $this->_client->getEngine()->addOption(sprintf('--proxy=%s', $options['proxy']));
+        }
+
+        if($options['cookie']) {
+            $this->_client->getEngine()->addOption(sprintf('--cookies-file=%s', $options['cookie']));
+        }
         /**
          * @see JonnyW\PhantomJs\Message\Request
          **/
         $request = $this->_client->getMessageFactory()->createRequest($link, $request);
         if($this->isDelay) {
-            //$request->setDelay($this->delay);
+            $request->setDelay($options['delay']);
         }
-        //$request->setTimeout(10);
+
         if($data) {
             $request->setRequestData($data);
         }
         $request->addHeaders(array(
-            'User-Agent' => 'Mozilla/5.0 (Windows NT 6.3; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/43.0.2357.132 Safari/537.36',
-            'Accept-charset' => 'utf-8',
-            'Accept-Encoding' => 'gzip, deflate',
+            'User-Agent'        => UserAgent::random(),
+            'Accept-charset'    => 'utf-8',
+            //'Accept-Encoding'   => 'gzip, deflate',
         ));
-        if($this->referer) {
-            $request->addHeader('Referer', $this->referer);
+        if($options['referer']) {
+            $request->addHeader('Referer', $options['referer']);
         }
 
         /**

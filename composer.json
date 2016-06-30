@@ -24,7 +24,9 @@
         "sunra/php-simple-html-dom-parser": "v1.5.1",
         "electrolinux/phpquery": "dev-master",
         "doctrine/collections": "v1.3.0",
-        "oncesk/yii-node-socket": "^2.0"
+        "oncesk/yii-node-socket": "^2.0",
+        "dunglas/php-torcontrol": "^1.0",
+        "campo/random-user-agent": "^1.1"
     },
     "require-dev": {
         "yiisoft/yii2-codeception": "*",

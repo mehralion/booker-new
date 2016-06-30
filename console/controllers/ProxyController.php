@@ -8,6 +8,7 @@ use common\models\EventBookmakerVersion;
 use common\models\EventOdds;
 use common\models\EventProblem;
 use common\models\Proxy;
+use common\models\ProxyCaptcha;
 use common\models\ProxySettings;
 use common\models\sport\Sport;
 use common\models\SportAlias;
@@ -29,9 +30,9 @@ class ProxyController extends Controller
             ->active()
             ->all();
         foreach ($ProxySources as $Proxy) {
-            $adapter = str_replace(' ', '', ucwords(str_replace('_', ' ', $Proxy->adapter)));
+            $adapter = str_replace('_', '-', $Proxy->adapter);
 
-            $command = sprintf('/usr/bin/php %s/console/yii proxy %s', ROOT_DIR, $adapter);
+            $command = sprintf('/usr/bin/php %s/yii proxy/%s', ROOT_DIR, $adapter);
 
             $jobby->add(sprintf('Proxy_%s', $adapter), array(
                 'command' => $command,
@@ -42,7 +43,7 @@ class ProxyController extends Controller
             ));
 
             $jobby->add(sprintf('Proxy_check_%s', $adapter), array(
-                'command' => sprintf('/usr/bin/php %s/console/yii proxy check --adapter=%s', $Proxy->adapter),
+                'command' => sprintf('/usr/bin/php %s/yii proxy/check %s', ROOT_DIR, $Proxy->adapter),
                 'schedule' => '* * * * *',
                 'output' => sprintf('%s/console/runtime/jobby/proxy/check_%s.log', ROOT_DIR, $adapter),
                 'enabled' => true,
@@ -56,6 +57,14 @@ class ProxyController extends Controller
     public function actionCheck($adapter)
     {
         try {
+            $captcha_list = [];
+            $ProxyCaptcha = ProxyCaptcha::find()
+                ->asArray()
+                ->all();
+            foreach ($ProxyCaptcha as $Proxy) {
+                $captcha_list[] = sprintf('%s:%s', $Proxy['ip'], $Proxy['port']);
+            }
+
             $ProxyList = Proxy::find()
                 ->select(['id', 'ip', 'port', 'attemt'])
                 ->andWhere('source = :source', [':source' => $adapter])
@@ -70,39 +79,53 @@ class ProxyController extends Controller
             foreach ($ProxyList as $Proxy) {
                 $Bookmakers = \Yii::$app->bookmaker->getList();
                 foreach ($Bookmakers as $Bookmaker) {
-                    if($Bookmaker->isProxyUse() === false) {
+                    if(!$Bookmaker->isProxyUse()) {
                         continue;
                     }
 
-                    $BookmakerProxy = BookmakerProxy::find()
-                        ->andWhere('bookmaker_id = :bookmaker_id', [':bookmaker_id' => $Bookmaker->getId()])
-                        ->andWhere('proxy_id = :proxy_id', [':proxy_id' => $Proxy['id']])
-                        ->one();
-
                     $proxy = sprintf('%s:%s', $Proxy['ip'], $Proxy['port']);
-                    if($Bookmaker->connect($proxy) === false) {
-                        if($BookmakerProxy) {
-                            $BookmakerProxy->delete();
-                        }
+                    if(in_array($proxy, $captcha_list)) {
+                        $this->log('ProxyCaptcha %s Adapter %s', $proxy, $adapter);
+                        continue;
+                    }
+
+                    $this->log('Proxy %s Adapter %s', $proxy, $adapter);
+                    $aliases = $Bookmaker->checkAll($proxy);
+                    if(empty($aliases)) {
+                        $this->log('Cant connect', $proxy, $adapter);
+                        BookmakerProxy::deleteAll('bookmaker_id = :bookmaker_id and proxy_id = :proxy_id', [
+                            ':bookmaker_id' => $Bookmaker->getId(),
+                            ':proxy_id' => $Proxy['id'],
+                        ]);
+
                         Proxy::updateAll([
                             'attemt' => $Proxy['attemt'] + 1,
                             'updated_at' => time()
-                        ], 'id = :id', $Proxy['id']);
+                        ], 'id = :id', [':id' => $Proxy['id']]);
 
                         continue;
                     }
+                    $this->log('Connected', $proxy, $adapter);
 
-                    if(!$BookmakerProxy) {
-                        $BookmakerProxy = new BookmakerProxy();
-                        $BookmakerProxy->bookmaker_id = $Bookmaker->getId();
-                        $BookmakerProxy->proxy_id = $Proxy['id'];
+                    foreach ($aliases as $alias) {
+                        $BookmakerProxy = BookmakerProxy::find()
+                            ->andWhere('bookmaker_id = :bookmaker_id', [':bookmaker_id' => $Bookmaker->getId()])
+                            ->andWhere('proxy_id = :proxy_id', [':proxy_id' => $Proxy['id']])
+                            ->andWhere('alias = :alias', [':alias' => $alias])
+                            ->count();
+                        if(!$BookmakerProxy) {
+                            $BookmakerProxy = new BookmakerProxy();
+                            $BookmakerProxy->bookmaker_id = $Bookmaker->getId();
+                            $BookmakerProxy->proxy_id = $Proxy['id'];
+                            $BookmakerProxy->alias = $alias;
+                            $BookmakerProxy->save();
+                        }
                     }
-                    $BookmakerProxy->save();
 
                     Proxy::updateAll([
                         'attemt' => 0,
                         'updated_at' => time()
-                    ], 'id = :id', $Proxy['id']);
+                    ], 'id = :id', [':id' => $Proxy['id']]);
                 }
             }
         } catch (\Exception $ex) {
@@ -150,7 +173,7 @@ class ProxyController extends Controller
                 $model->ip = $ip;
                 $model->port = $port;
                 $model->source = $ProxySource->adapter;
-                $model->is_enabled = false;
+                $model->is_enabled = 0;
                 $model->save();
 
                 $allready[] = $keyPair;
@@ -186,7 +209,7 @@ class ProxyController extends Controller
                 $allready[] = sprintf('%s:%s', $Proxy['ip'], $Proxy['port']);
             }
 
-            $rows = Json::decode($content);
+            $rows = Json::decode(utf8_encode($content));
             foreach ($rows as $row) {
                 $ip = $row['ip'];
                 $port = $row['port'];
@@ -202,7 +225,7 @@ class ProxyController extends Controller
                 $model->country_code = $row['country_code'];
                 $model->country_name = $row['country_name'];
                 $model->source = $ProxySource->adapter;
-                $model->is_enabled = false;
+                $model->is_enabled = 0;
                 $model->save();
 
                 $allready[] = $keyPair;

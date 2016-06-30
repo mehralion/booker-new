@@ -8,6 +8,7 @@
 namespace common\components\bookmaker\_interface;
 
 
+use common\models\Bookmaker;
 use Doctrine\Common\Collections\ArrayCollection;
 
 interface iBookmaker
@@ -24,38 +25,24 @@ interface iBookmaker
      */
     public function addAlias($alias);
 
-    /**
-     * @param $regexp
-     * @return self
-     */
-    public function setRegexpIgnoreSport($regexp);
 
     /**
-     * @param $regexp
-     * @return self
+     * @param string $alias
+     * @param null $proxy
+     * @return boolean
      */
-    public function setRegexpIgnoreEvent($regexp);
-
-    public function connect($proxy = null);
+    public function connect($alias, $proxy = null);
 
     /**
-     * @param $key
-     * @return self
+     * @param null $proxy
+     * @return array
      */
-    public function setKey($key);
-
-    public function getKey();
+    public function checkAll($proxy = null);
 
     /**
      * @return int
      */
     public function getId();
-
-    /**
-     * @param $id
-     * @return self
-     */
-    public function setId($id);
 
     /**
      * @return iSport
@@ -75,13 +62,13 @@ interface iBookmaker
     public function getEvents($Sport);
 
     /**
-     * @param $isProxyUse
-     * @return self
-     */
-    public function setUseProxy($isProxyUse);
-
-    /**
      * @return boolean
      */
     public function isProxyUse();
+
+    /**
+     * @param Bookmaker $settings
+     * @return mixed
+     */
+    public function setSettings(Bookmaker $settings);
 }

@@ -9,6 +9,7 @@ use Yii;
  *
  * @property integer $bookmaker_id
  * @property integer $proxy_id
+ * @property string $alias
  *
  * @property Bookmaker $bookmaker
  * @property Proxy $proxy
@@ -29,7 +30,7 @@ class BookmakerProxy extends \yii\db\ActiveRecord
     public function rules()
     {
         return [
-            [['bookmaker_id', 'proxy_id'], 'required'],
+            [['bookmaker_id', 'proxy_id', 'alias'], 'required'],
             [['bookmaker_id', 'proxy_id'], 'integer'],
             [['bookmaker_id'], 'exist', 'skipOnError' => true, 'targetClass' => Bookmaker::className(), 'targetAttribute' => ['bookmaker_id' => 'id']],
             [['proxy_id'], 'exist', 'skipOnError' => true, 'targetClass' => Proxy::className(), 'targetAttribute' => ['proxy_id' => 'id']],
@@ -44,6 +45,7 @@ class BookmakerProxy extends \yii\db\ActiveRecord
         return [
             'bookmaker_id' => 'Bookmaker ID',
             'proxy_id' => 'Proxy ID',
+            'alias' => 'Alias',
         ];
     }
 

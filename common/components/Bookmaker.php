@@ -32,12 +32,7 @@ class Bookmaker extends Component
             $class = $bookmaker->class;
 
             /** @var iBookmaker $bookmaker_obj */
-            $bookmaker_obj = new $class();
-            $bookmaker_obj->setRegexpIgnoreSport($bookmaker->ignore_sport_regexp)
-                ->setRegexpIgnoreEvent($bookmaker->ignore_event_regexp)
-                ->setKey($bookmaker->key)
-                ->setUseProxy($bookmaker->use_proxy)
-                ->setId($bookmaker->id);
+            $bookmaker_obj = new $class($bookmaker);
             foreach ($bookmaker->bookmakerAliases as $alias) {
                 $bookmaker_obj->addAlias($alias->host);
             }

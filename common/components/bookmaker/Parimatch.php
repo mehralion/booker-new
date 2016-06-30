@@ -13,18 +13,19 @@ use common\components\bookmaker\_interface\iBookmakerEvent;
 use common\components\bookmaker\_interface\iSport;
 use common\components\bookmaker\parimatch\Event;
 use common\components\bookmaker\parimatch\Sport;
+use common\components\Phantom;
 use common\helpers\SportHelper;
+use common\models\Bookmaker;
 use common\models\Team;
 use common\models\TeamAlias;
 use Doctrine\Common\Collections\ArrayCollection;
 use simplehtmldom_1_5\simple_html_dom;
 use simplehtmldom_1_5\simple_html_dom_node;
 use common\components\bookmaker\parimatch\factories\ParserValidate;
+use Yii;
 
 class Parimatch extends BaseBookmaker
 {
-    protected $client;
-
     protected $sport_link = [
         SportHelper::SPORT_FOOTBALL     => 'sport/futbol',
         SportHelper::SPORT_TENNIS       => 'sport/tennis',
@@ -32,36 +33,69 @@ class Parimatch extends BaseBookmaker
         SportHelper::SPORT_HOKKEY       => 'sport/khokkejj',
     ];
 
-    public function __construct()
+    protected $options = [
+        'delay' => 8,
+        'referer' => 'http://google.com'
+    ];
+
+    public function __construct(Bookmaker $settings)
     {
-        $this->client = \Yii::$app->phantom;
-        $this->client
-            ->useProxy(true)
-            ->delay(8);
+        parent::__construct($settings);
+
+        $this->connector
+            ->setClient(Yii::$app->phantom)
+            ->setDelay(8);
     }
 
-    public function connect($proxy = null)
+    public function connect($alias = null, $proxy = null)
     {
+        $this->connector
+            ->setHost($alias ? $alias : $this->getAlias())
+            ->setProxy($proxy)
+            ->setReferer(null);
+
         $time_start = microtime(true);
 
-        $client = $this->client;
-        if($proxy) {
-            $client->proxy($proxy);
-        }
-
-        $r = false;
-        foreach ($this->getAliases() as $alias) {
-            $response = $client->get($alias, true);
-            if(preg_match('/Результаты live/ui', $response)) {
-                $this->work_host = $alias;
-
-                $r = true;
-                break;
-            }
+        $response =  $this->getClient()->get($this->connector->getHost());
+        if(preg_match('/Результаты live/ui', $response)) {
+            $this->connector
+                ->setIsConnect(true)
+                ->setReferer($alias);
         }
         
-        \Yii::trace(sprintf('Тестовый коннект: %s сек. Результат: %d', microtime(true) - $time_start, $r ? 1 : 0));
-        return $r;
+        Yii::trace(sprintf('Тестовый коннект: %s сек. Результат: %d', microtime(true) - $time_start, $this->connector->isConnect() ? 1 : 0));
+
+        return $this->connector->isConnect();
+    }
+
+    /**
+     * @return Phantom
+     */
+    private function getClient()
+    {
+        return $this->connector->getClient();
+    }
+
+    /**
+     * @param null $proxy
+     * @return array
+     */
+    public function checkAll($proxy = null)
+    {
+        $alias_ids = [];
+
+        $this->connector
+            ->setProxy($proxy)
+            ->setReferer(null);
+
+        foreach ($this->getAliases() as $alias) {
+            $response = $this->getClient()->get($alias);
+            if(preg_match('/Результаты live/ui', $response)) {
+                $alias_ids[] = $alias;
+            }
+        }
+
+        return $alias_ids;
     }
 
     public function getSportList($sport_type)
@@ -72,16 +106,15 @@ class Parimatch extends BaseBookmaker
             return $returned;
         }
 
-        $response = $this->client
-            ->referer($this->work_host)
-            ->get(sprintf('%s/%s', rtrim($this->work_host, '/'), ltrim($this->sport_link[$sport_type], '/')), true);
+        $response = $this->getClient()
+            ->get(sprintf('%s/%s', rtrim($this->connector->getHost(), '/'), ltrim($this->sport_link[$sport_type], '/')));
 
         /** @var simple_html_dom $dom */
         $dom = \Sunra\PhpSimple\HtmlDomParser::str_get_html('<html>'.$response.'</html>');
         /** @var simple_html_dom_node $sport_el */
         foreach ($dom->find('ul[id=sports] li a') as $sport_el) {
             $title = $sport_el->text();
-            if(preg_match('/'.$this->regexp_ignore_sport.'/ui', $title)) {
+            if(preg_match('/'.$this->settings->ignore_sport_regexp.'/ui', $title)) {
                 continue;
             }
 
@@ -112,9 +145,8 @@ class Parimatch extends BaseBookmaker
         $events = new ArrayCollection();
 
         $time_start = microtime(true);
-        $response = $this->client
-            ->referer($this->work_host)
-            ->get(sprintf('%s/%s', rtrim($this->work_host, '/'), ltrim($Sport->getLink(), '/')), true);
+        $response = $this->getClient()
+            ->get(sprintf('%s/%s', rtrim($this->connector->getHost(), '/'), ltrim($Sport->getLink(), '/')));
         \Yii::trace(sprintf('Получили HTML лиг: %s сек.', microtime(true) - $time_start));
         if(!$response) {
             return $events;
@@ -136,10 +168,10 @@ class Parimatch extends BaseBookmaker
 
         $Sport->setTemplate($template_name);
         foreach ($items as $item) {
-            if($this->regexp_ignore_event && preg_match('/'.$this->regexp_ignore_event.'/ui', $item['team_1'])) {
+            if($this->settings->ignore_event_regexp && preg_match('/'.$this->settings->ignore_event_regexp.'/ui', $item['team_1'])) {
                 continue;
             }
-            if($this->regexp_ignore_event && preg_match('/'.$this->regexp_ignore_event.'/ui', $item['team_2'])) {
+            if($this->settings->ignore_event_regexp && preg_match('/'.$this->settings->ignore_event_regexp.'/ui', $item['team_2'])) {
                 continue;
             }
 
